@@ -887,19 +887,21 @@ async fn download_from_mediafire<T: Downloadable + Debug>(
     Ok(final_dist)
 }
 
+fn get_config_path() -> PathBuf {
+    dirs::data_local_dir().unwrap().join("Wynncraft Majestic Overhaul Installer")
+}
+
 fn get_app_data() -> PathBuf {
-    if env::consts::OS == "linux" {
-        dirs::home_dir().unwrap()
-    } else if env::consts::OS == "windows" || env::consts::OS == "macos" {
-        dirs::config_dir().unwrap()
-    } else {
-        panic!("Unsupported os '{}'!", env::consts::OS)
-    }
+    match env::consts::OS {
+        "linux" => dirs::home_dir(),
+        "windows" | "macos" => dirs::config_dir(),
+        _ => panic!("Unsupported os '{}'!", env::consts::OS)
+    }.unwrap()
 }
 
 fn get_multimc_folder(multimc: &str) -> Result<PathBuf, String> {
     let path = match env::consts::OS {
-        "linux" => get_app_data().join(format!(".local/share/{}", multimc)),
+        "linux" => dirs::data_local_dir().unwrap().join(multimc),
         "windows" | "macos" => get_app_data().join(multimc),
         _ => panic!("Unsupported os '{}'!", env::consts::OS),
     };
@@ -1702,7 +1704,22 @@ fn get_launcher(string_representation: &str) -> Result<Launcher, String> {
 }
 
 fn main() {
-    fs::create_dir_all(get_app_data().join(".WC_OVHL/")).expect("Failed to create config dir!");
+    let legacy_path = match env::consts::OS {
+        "windows" | "macos" => dirs::config_dir(),
+        _ => dirs::home_dir(),
+    }.unwrap().join(".WC_OVHL");
+
+    if legacy_path.exists() {
+        println!("Detected legacy .WC_OVHL directory. Attempting to move it to the new location.");
+
+        match fs::rename(&legacy_path, get_config_path()) {
+            Ok(_) => println!("Successfully moved legacy directory to its new destination."),
+            Err(e) => println!("Could not move legacy directory to the new location. Error: {}", e),
+        };
+    }
+
+    fs::create_dir_all(get_config_path()).expect("Failed to create config dir!");
+
     CombinedLogger::init(vec![
         TermLogger::new(
             LevelFilter::Info,
@@ -1713,7 +1730,7 @@ fn main() {
         WriteLogger::new(
             LevelFilter::Info,
             LogConfig::default(),
-            File::create(get_app_data().join(".WC_OVHL/installer.log")).unwrap(),
+            File::create(get_config_path().join("installer.log")).unwrap(),
         ),
     ])
     .unwrap();
@@ -1741,7 +1758,7 @@ fn main() {
             .as_str(),
     )
     .expect("Failed to parse branches!");
-    let config_path = get_app_data().join(".WC_OVHL/config.json");
+    let config_path = get_config_path().join("config.json");
     let config: Config;
     if config_path.exists() {
         config = serde_json::from_slice(&fs::read(&config_path).expect("Failed to read config!"))
@@ -1764,7 +1781,7 @@ fn main() {
             ).with_icon(
                 Icon::from_rgba(icon.to_rgba8().to_vec(), icon.width(), icon.height()).unwrap(),
             ).with_data_directory(
-                env::temp_dir().join(".WC_OVHL")
+                get_config_path()
             ).with_menu(None)
         ).with_context(gui::AppProps {
             branches,
