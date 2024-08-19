@@ -888,7 +888,7 @@ async fn download_from_mediafire<T: Downloadable + Debug>(
 }
 
 fn get_config_path() -> PathBuf {
-    dirs::data_local_dir().unwrap().join("Wynncraft Majestic Overhaul Installer")
+    dirs::data_dir().unwrap().join("Wynncraft Majestic Overhaul Installer")
 }
 
 fn get_app_data() -> PathBuf {
