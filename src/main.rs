@@ -895,13 +895,13 @@ fn get_app_data() -> PathBuf {
     match env::consts::OS {
         "linux" => dirs::home_dir(),
         "windows" | "macos" => dirs::config_dir(),
-        _ => panic!("Unsupported os '{}'!", env::consts::OS)
+        _ => panic!("Unsupported OS '{}'!", env::consts::OS)
     }.unwrap()
 }
 
 fn get_multimc_folder(multimc: &str) -> Result<PathBuf, String> {
     let path = match env::consts::OS {
-        "linux" => dirs::data_local_dir().unwrap().join(multimc),
+        "linux" => dirs::data_dir().unwrap().join(multimc),
         "windows" | "macos" => get_app_data().join(multimc),
         _ => panic!("Unsupported os '{}'!", env::consts::OS),
     };
@@ -1704,15 +1704,12 @@ fn get_launcher(string_representation: &str) -> Result<Launcher, String> {
 }
 
 fn main() {
-    let legacy_path = match env::consts::OS {
-        "windows" | "macos" => dirs::config_dir(),
-        _ => dirs::home_dir(),
-    }.unwrap().join(".WC_OVHL");
+    let legacy_path = get_app_data().join(".WC_OVHL");
 
     if legacy_path.exists() {
         println!("Detected legacy .WC_OVHL directory. Attempting to move it to the new location.");
 
-        match fs::rename(&legacy_path, get_config_path()) {
+        match fs::rename(legacy_path, get_config_path()) {
             Ok(_) => println!("Successfully moved legacy directory to its new destination."),
             Err(e) => println!("Could not move legacy directory to the new location. Error: {}", e),
         };
